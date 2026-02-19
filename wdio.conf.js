@@ -50,6 +50,15 @@ exports.config = {
   capabilities: [
     {
       browserName: 'chrome',
+      // run headless in CI (and increase window size for screenshots)
+      'goog:chromeOptions': {
+        args: [
+          '--headless=new',
+          '--no-sandbox',
+          '--disable-dev-shm-usage',
+          '--window-size=1920,1080'
+        ]
+      }
     },
   ],
 
@@ -123,13 +132,27 @@ exports.config = {
   // Test reporter for stdout.
   // The only one supported by default is 'dot'
   // see also: https://webdriver.io/docs/dot-reporter
-  reporters: ['spec'],
+  // we add mochawesome for HTML/JSON reports (similar to extent reports)
+  reporters: [
+    'spec',
+    ['mochawesome', {
+      outputDir: './reports',
+      reportFilename: 'wdio-report',
+      html: true,
+      json: true,
+      reportTitle: 'WDIO E2E Test Report',
+      inlineAssets: true,
+      overwrite: false,
+      quiet: true,
+    }]
+  ],
 
   // Options to be passed to Mocha.
   // See the full list at http://mochajs.org/
   mochaOpts: {
     ui: 'bdd',
     timeout: 60000,
+    retries: 3, // retry failed tests up to 3 times
   },
 
   //
@@ -269,8 +292,37 @@ exports.config = {
    * @param {Array.<Object>} capabilities list of capabilities details
    * @param {<Object>} results object containing test results
    */
-  // onComplete: function(exitCode, config, capabilities, results) {
-  // },
+  onComplete: function (exitCode, config, capabilities, results) {
+    // automatically generate HTML report from mochawesome JSON
+    try {
+      const { execSync } = require('child_process');
+      // use the cid from results or default filename
+      const jsonFile = './reports/results-0-0.json';
+      execSync(
+        `npx marge ${jsonFile} --reportDir reports --reportFilename wdio-report`,
+        { stdio: 'inherit' }
+      );
+    } catch (err) {
+      console.error('Failed to generate HTML report:', err.message);
+    }
+  },
+
+  // capture screenshot on failure and attach to mochawesome report
+  afterTest: async function(test, context, { error, result, duration, passed, retries }) {
+    if (error) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filepath = `./reports/screenshots/${test.title}-${timestamp}.png`;
+      await browser.saveScreenshot(filepath);
+
+      // add screenshot path to mochawesome context (so it shows in HTML)
+      try {
+        const addContext = require('mochawesome/addContext');
+        addContext({ test }, filepath);
+      } catch (err) {
+        // ignore if addContext not available
+      }
+    }
+  },
   /**
    * Gets executed when a refresh happens.
    * @param {string} oldSessionId session ID of the old session

@@ -1,4 +1,4 @@
-const { expect } = require('@wdio/globals');
+const { expect, browser } = require('@wdio/globals');
 const LoginPage = require('../pageobjects/login.page');
 
 // credentials can be moved to a fixture if desired
@@ -14,17 +14,19 @@ describe('Login flow', () => {
 
     // wait for the flash alert to appear instead of a fixed pause
     await expect(secure.flashAlert).toBeDisplayed();
-    await expect(secure.flashAlert).toHaveTextContaining('secure area');
+    // manually verify text contains substring
+    const text = await secure.flashAlert.getText();
+    expect(text).toContain('secure area');
 
     // also verify that the url changed
-    await expect(browser).toHaveUrlContaining('/secure');
+    const currentUrl = await browser.getUrl();
+    expect(currentUrl).toContain('/secure');
   });
 
   it('rejects invalid password', async () => {
     await LoginPage.login('tomsmith', 'badpass');
     await expect(LoginPage.errorAlert).toBeDisplayed();
-    await expect(LoginPage.errorAlert).toHaveTextContaining(
-      'Your password is invalid'
-    );
+    const errText = await LoginPage.errorAlert.getText();
+    expect(errText).toContain('Your password is invalid');
   });
 });

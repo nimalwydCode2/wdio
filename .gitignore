@@ -1,0 +1,7 @@
+node_modules
+
+# Jenkins maintains state in this directory; do not commit it
+jenkins_home/
+
+# WDIO reports and screenshots (optional)
+reports/
