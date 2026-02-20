@@ -18,7 +18,7 @@ describe('Login flow', () => {
     const text = await secure.flashAlert.getText();
     expect(text).toContain('secure area');
 
-    // also verify that the url changed
+    // verify that the url changed
     const currentUrl = await browser.getUrl();
     expect(currentUrl).toContain('/secure');
   });
